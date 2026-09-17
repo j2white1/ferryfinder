@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Queen of Capilano - Bowen Island Ferry Live Tracker</title>
+  <meta name="description" content="Live 3D isometric tracking for the Queen of Capilano ferry between Bowen Island (Snug Cove) and Horseshoe Bay.">
+  
+  <!-- MapLibre GL CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  
+  <!-- Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css?v=20260914i">
+</head>
+<body>
+  <!-- Fullscreen Map Canvas -->
+  <div id="map"></div>
+
+  <!-- Top Floating HUD -->
+  <header class="hud-top">
+    <div class="hud-card vessel-header">
+      <div class="vessel-badge">
+        <span class="pulse-indicator" id="liveIndicator"></span>
+        <span class="vessel-name">Queen of Capilano</span>
+      </div>
+      <div class="vessel-quick-stats" id="vesselQuickStats">
+        <span id="headerStatus">Locating ferry...</span>
+      </div>
+    </div>
+
+    <!-- Map Camera Controls -->
+    <div class="hud-controls">
+      <button class="hud-btn active" id="btn3DToggle" title="Toggle 3D Isometric View" aria-label="Toggle 3D view">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <span class="btn-label">3D</span>
+      </button>
+
+      <button class="hud-btn active" id="btnFollow" title="Lock & Follow Ferry" aria-label="Follow ferry">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="7"/>
+          <path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+        </svg>
+        <span class="btn-label">Follow</span>
+      </button>
+
+      <button class="hud-btn" id="btnLayerToggle" title="Change Map Style (Dark / Satellite / Street)" aria-label="Change map style">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+          <line x1="8" y1="2" x2="8" y2="18"/>
+          <line x1="16" y1="6" x2="16" y2="22"/>
+        </svg>
+        <span class="btn-label" id="layerLabel">Marine</span>
+      </button>
+
+      <button class="hud-btn" id="btnScheduleToggle" title="View Daily Schedule & Deck Space" aria-label="Schedule">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span class="btn-label">Schedule</span>
+      </button>
+
+      <button class="hud-btn" id="btnCamToggle" title="Live Snug Cove Ferry Cam" aria-label="Live Ferry Cam">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 7l-7 5 7 5V7z"/>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+        <span class="btn-label">Ferry Cam</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Bottom Terminal Quick-Bar -->
+  <div class="hud-bottom-bar">
+    <div class="terminal-pill" id="bowenTerminalPill">
+      <span class="pill-dot"></span>
+      <div class="pill-text">
+        <span class="pill-title">Snug Cove (Bowen)</span>
+        <span class="pill-sub" id="bowenNextDeparture">Next: Loading...</span>
+      </div>
+    </div>
+
+    <div class="terminal-pill" id="hsbTerminalPill">
+      <span class="pill-dot"></span>
+      <div class="pill-text">
+        <span class="pill-title">Horseshoe Bay</span>
+        <span class="pill-sub" id="hsbDeckSpace">Deck: Loading...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Ferry Cam Floating Modal -->
+  <div class="camera-modal hidden" id="cameraModal">
+    <div class="camera-modal-header">
+      <div class="cam-title-wrap">
+        <span class="pulse-indicator cam-live"></span>
+        <div>
+          <span class="cam-title">Snug Cove Ferry Cam</span>
+          <span class="cam-sub" id="camTimestamp">Live Feed • Auto-refreshes 30s</span>
+        </div>
+      </div>
+      <div class="cam-actions">
+        <button class="cam-btn" id="btnCamRefresh" title="Refresh Camera" aria-label="Refresh Camera">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </button>
+        <button class="cam-close-btn" id="btnCamClose" aria-label="Close Camera">&times;</button>
+      </div>
+    </div>
+    <div class="camera-img-container">
+      <img id="ferryCamImg" src="" alt="Snug Cove Ferry Cam Live View" />
+      <div class="cam-loading-overlay" id="camLoadingOverlay">Loading live view...</div>
+    </div>
+    <div class="camera-modal-footer">
+      <span>Near-real-time view of Snug Cove lineup courtesy of Bowen Island Municipality</span>
+    </div>
+  </div>
+
+  <!-- Schedule & Terminal Drawer / Modal -->
+  <aside class="schedule-drawer hidden" id="scheduleDrawer">
+    <div class="drawer-handle" id="drawerCloseHandle"></div>
+    <div class="drawer-header">
+      <h3>Sailing Timetable & Conditions</h3>
+      <button class="close-btn" id="btnDrawerClose">&times;</button>
+    </div>
+    
+    <div class="drawer-content">
+      <!-- Deck Space Highlight -->
+      <section class="drawer-section deck-space-card">
+        <h4>Horseshoe Bay Vehicle Deck Space</h4>
+        <div id="deckSpaceContainer" class="deck-space-grid">
+          <span>Loading deck space...</span>
+        </div>
+      </section>
+
+      <!-- Schedules -->
+      <section class="drawer-section">
+        <div class="schedule-columns">
+          <div class="schedule-col">
+            <h4 class="terminal-heading">Bowen Island (Snug Cove)</h4>
+            <div id="scheduleBowenList" class="schedule-list">Loading...</div>
+          </div>
+          <div class="schedule-col">
+            <h4 class="terminal-heading">Horseshoe Bay</h4>
+            <div id="scheduleHSBList" class="schedule-list">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recent Berth Times -->
+      <section class="drawer-section">
+        <h4>Today's Recorded Berth Activity</h4>
+        <div id="berthActivityList" class="berth-table-wrap">Loading...</div>
+      </section>
+    </div>
+  </aside>
+
+  <!-- MapLibre GL JS -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  
+  <!-- App Scripts -->
+  <script src="js/telemetry.js?v=20260914i"></script>
+  <script src="js/vessel.js?v=20260914i"></script>
+  <script src="js/map.js?v=20260914i"></script>
+  <script src="js/app.js?v=20260914i"></script>
+</body>
+</html>

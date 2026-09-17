@@ -1,0 +1,21 @@
+{
+  "name": "ferryfinder",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Live isometric map tracking the Queen of Capilano Bowen Island Ferry",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "ferry",
+    "bowen-island",
+    "queen-of-capilano",
+    "maplibre",
+    "ais",
+    "bc-ferries"
+  ],
+  "author": "",
+  "license": "MIT"
+}
