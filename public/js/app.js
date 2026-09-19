@@ -23,8 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const scheduleBowenList = document.getElementById('scheduleBowenList');
   const scheduleHSBList = document.getElementById('scheduleHSBList');
   const berthActivityList = document.getElementById('berthActivityList');
-  const btnCamToggle = document.getElementById('btnCamToggle');
+  const btnBowenCam = document.getElementById('btnBowenCam');
+  const btnHsbCam = document.getElementById('btnHsbCam');
   const cameraModal = document.getElementById('cameraModal');
+  const camModalTitle = document.getElementById('camModalTitle');
+  const camFooterNote = document.getElementById('camFooterNote');
   const btnCamClose = document.getElementById('btnCamClose');
   const btnCamRefresh = document.getElementById('btnCamRefresh');
   const ferryCamImg = document.getElementById('ferryCamImg');
@@ -306,17 +309,57 @@ document.addEventListener('DOMContentLoaded', () => {
         closeTerminalModal();
       }
     }
+    if (cameraModal && !cameraModal.classList.contains('hidden')) {
+      if (!cameraModal.contains(e.target) &&
+          (!btnBowenCam || !btnBowenCam.contains(e.target)) &&
+          (!btnHsbCam || !btnHsbCam.contains(e.target))) {
+        closeCameraModal();
+      }
+    }
   });
 
   // Camera Modal Handling
+  const CAM_CONFIG = {
+    bowen: {
+      title: 'Snug Cove Ferry Cam',
+      footer: 'Near-real-time view of Snug Cove lineup courtesy of Bowen Island Municipality',
+      proxyUrl: '/api/ferry/camera/bowen',
+      fallbackUrl: 'https://i0.wp.com/ferrycamera.bowencommunitycentre.com/snapshot.jpg?w=1290&ssl=1'
+    },
+    hsb: {
+      title: 'Horseshoe Bay Terminal Cam',
+      footer: 'Near-real-time view courtesy of BC Ferries',
+      proxyUrl: '/api/ferry/camera/hsb',
+      fallbackUrl: 'https://ccimg.bcferries.com/cc/support/terminals/cam1_HSB.jpg'
+    }
+  };
+
+  let currentCamTerminal = null;
   let camRefreshInterval = null;
 
+  function updateCamButtonStates() {
+    if (btnBowenCam) {
+      btnBowenCam.classList.toggle('active', currentCamTerminal === 'bowen');
+    }
+    if (btnHsbCam) {
+      btnHsbCam.classList.toggle('active', currentCamTerminal === 'hsb');
+    }
+  }
+
   function loadFerryCamera() {
-    if (!ferryCamImg) return;
-    if (camLoadingOverlay) camLoadingOverlay.classList.add('active');
+    if (!ferryCamImg || !currentCamTerminal) return;
+    const config = CAM_CONFIG[currentCamTerminal] || CAM_CONFIG.bowen;
+
+    if (camModalTitle) camModalTitle.textContent = config.title;
+    if (camFooterNote) camFooterNote.textContent = config.footer;
+    if (camLoadingOverlay) {
+      camLoadingOverlay.textContent = 'Loading live view...';
+      camLoadingOverlay.classList.add('active');
+    }
+
     const timestamp = Date.now();
-    const proxyUrl = `/api/ferry/camera?t=${timestamp}`;
-    const fallbackUrl = `https://i0.wp.com/ferrycamera.bowencommunitycentre.com/snapshot.jpg?w=1290&ssl=1&t=${timestamp}`;
+    const proxyUrl = `${config.proxyUrl}?t=${timestamp}`;
+    const fallbackUrl = `${config.fallbackUrl}${config.fallbackUrl.includes('?') ? '&' : '?'}t=${timestamp}`;
 
     ferryCamImg.onload = () => {
       if (camLoadingOverlay) camLoadingOverlay.classList.remove('active');
@@ -340,37 +383,48 @@ document.addEventListener('DOMContentLoaded', () => {
     ferryCamImg.src = proxyUrl;
   }
 
-  function openCameraModal() {
+  function openCameraModal(terminal) {
     if (!cameraModal) return;
+    currentCamTerminal = terminal || 'bowen';
     cameraModal.classList.remove('hidden');
-    if (btnCamToggle) btnCamToggle.classList.add('active');
+    updateCamButtonStates();
     loadFerryCamera();
-    if (!camRefreshInterval) {
-      camRefreshInterval = setInterval(loadFerryCamera, 30000);
-    }
+    if (camRefreshInterval) clearInterval(camRefreshInterval);
+    camRefreshInterval = setInterval(loadFerryCamera, 30000);
   }
 
   function closeCameraModal() {
     if (!cameraModal) return;
     cameraModal.classList.add('hidden');
-    if (btnCamToggle) btnCamToggle.classList.remove('active');
+    currentCamTerminal = null;
+    updateCamButtonStates();
     if (camRefreshInterval) {
       clearInterval(camRefreshInterval);
       camRefreshInterval = null;
     }
   }
 
-  function toggleCameraModal() {
+  function toggleCameraModal(terminal) {
     if (!cameraModal) return;
-    if (cameraModal.classList.contains('hidden')) {
-      openCameraModal();
-    } else {
+    if (!cameraModal.classList.contains('hidden') && currentCamTerminal === terminal) {
       closeCameraModal();
+    } else {
+      openCameraModal(terminal);
     }
   }
 
-  if (btnCamToggle) {
-    btnCamToggle.addEventListener('click', toggleCameraModal);
+  if (btnBowenCam) {
+    btnBowenCam.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleCameraModal('bowen');
+    });
+  }
+
+  if (btnHsbCam) {
+    btnHsbCam.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleCameraModal('hsb');
+    });
   }
 
   if (btnCamClose) {

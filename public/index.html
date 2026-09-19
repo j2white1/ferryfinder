@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="css/style.css?v=20260918c">
+  <link rel="stylesheet" href="css/style.css?v=20260918d">
 </head>
 <body>
   <!-- Fullscreen Map Canvas -->
@@ -67,19 +67,19 @@
         </svg>
         <span class="btn-label">Schedule</span>
       </button>
-
-      <button class="hud-btn" id="btnCamToggle" title="Live Snug Cove Ferry Cam" aria-label="Live Ferry Cam">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M23 7l-7 5 7 5V7z"/>
-          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-        </svg>
-        <span class="btn-label"><span class="hide-mobile">Ferry </span>Cam</span>
-      </button>
     </div>
   </header>
 
-  <!-- Bottom Terminal Quick-Bar -->
+  <!-- Bottom Terminal Quick-Bar with Terminal Webcams -->
   <div class="hud-bottom-bar">
+    <!-- Snug Cove Ferry Cam Button -->
+    <button class="terminal-cam-btn" id="btnBowenCam" title="Live Snug Cove Ferry Cam" aria-label="Snug Cove Ferry Cam">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 7l-7 5 7 5V7z"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+    </button>
+
     <div class="terminal-pill" id="bowenTerminalPill" title="Click to view remaining sailings from Snug Cove">
       <span class="pill-dot"></span>
       <div class="pill-text">
@@ -95,6 +95,14 @@
         <span class="pill-sub" id="hsbDeckSpace">Deck: Loading...</span>
       </div>
     </div>
+
+    <!-- Horseshoe Bay Terminal Cam Button -->
+    <button class="terminal-cam-btn" id="btnHsbCam" title="Live Horseshoe Bay Terminal Cam" aria-label="Horseshoe Bay Terminal Cam">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 7l-7 5 7 5V7z"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+    </button>
   </div>
 
   <!-- Live Ferry Cam Floating Modal -->
@@ -103,7 +111,7 @@
       <div class="cam-title-wrap">
         <span class="pulse-indicator cam-live"></span>
         <div>
-          <span class="cam-title">Snug Cove Ferry Cam</span>
+          <span class="cam-title" id="camModalTitle">Snug Cove Ferry Cam</span>
           <span class="cam-sub" id="camTimestamp">Live Feed • Auto-refreshes 30s</span>
         </div>
       </div>
@@ -118,11 +126,11 @@
       </div>
     </div>
     <div class="camera-img-container">
-      <img id="ferryCamImg" src="" alt="Snug Cove Ferry Cam Live View" />
+      <img id="ferryCamImg" src="" alt="Live Terminal Camera View" />
       <div class="cam-loading-overlay" id="camLoadingOverlay">Loading live view...</div>
     </div>
     <div class="camera-modal-footer">
-      <span>Near-real-time view of Snug Cove lineup courtesy of Bowen Island Municipality</span>
+      <span id="camFooterNote">Near-real-time view courtesy of Bowen Island Municipality</span>
     </div>
   </div>
 
@@ -193,9 +201,9 @@
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   
   <!-- App Scripts -->
-  <script src="js/telemetry.js?v=20260918c"></script>
-  <script src="js/vessel.js?v=20260918c"></script>
-  <script src="js/map.js?v=20260918c"></script>
-  <script src="js/app.js?v=20260918c"></script>
+  <script src="js/telemetry.js?v=20260918d"></script>
+  <script src="js/vessel.js?v=20260918d"></script>
+  <script src="js/map.js?v=20260918d"></script>
+  <script src="js/app.js?v=20260918d"></script>
 </body>
 </html>

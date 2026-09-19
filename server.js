@@ -388,7 +388,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (pathname === '/api/ferry/camera') {
+  if (pathname === '/api/ferry/camera' || pathname === '/api/ferry/camera/bowen') {
     const camUrl = 'https://ferrycamera.bowencommunitycentre.com/snapshot.jpg';
     const reqProxy = https.get(camUrl, {
       headers: {
@@ -405,7 +405,7 @@ const server = http.createServer(async (req, res) => {
       upstreamRes.pipe(res);
     });
 
-    reqProxy.on('error', (err) => {
+    reqProxy.on('error', () => {
       res.writeHead(302, {
         'Location': `https://i0.wp.com/ferrycamera.bowencommunitycentre.com/snapshot.jpg?w=1290&ssl=1&t=${Date.now()}`
       });
@@ -416,6 +416,40 @@ const server = http.createServer(async (req, res) => {
       reqProxy.destroy();
       res.writeHead(302, {
         'Location': `https://i0.wp.com/ferrycamera.bowencommunitycentre.com/snapshot.jpg?w=1290&ssl=1&t=${Date.now()}`
+      });
+      res.end();
+    });
+    return;
+  }
+
+  if (pathname === '/api/ferry/camera/hsb') {
+    const camUrl = 'https://ccimg.bcferries.com/cc/support/terminals/cam1_HSB.jpg';
+    const reqProxy = https.get(camUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (BowenFerryTracker/1.0)',
+        'Referer': 'https://www.bcferries.com/'
+      },
+      timeout: 8000
+    }, (upstreamRes) => {
+      res.writeHead(upstreamRes.statusCode || 200, {
+        'Content-Type': upstreamRes.headers['content-type'] || 'image/jpeg',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Access-Control-Allow-Origin': '*'
+      });
+      upstreamRes.pipe(res);
+    });
+
+    reqProxy.on('error', () => {
+      res.writeHead(302, {
+        'Location': `https://ccimg.bcferries.com/cc/support/terminals/cam1_HSB.jpg?t=${Date.now()}`
+      });
+      res.end();
+    });
+
+    reqProxy.on('timeout', () => {
+      reqProxy.destroy();
+      res.writeHead(302, {
+        'Location': `https://ccimg.bcferries.com/cc/support/terminals/cam1_HSB.jpg?t=${Date.now()}`
       });
       res.end();
     });
