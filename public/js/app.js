@@ -237,6 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openTerminalModal(terminal) {
     if (!terminalModal) return;
+    closeCameraModal();
     currentModalTerminal = terminal;
     terminalModal.classList.remove('hidden');
 
@@ -383,9 +384,56 @@ document.addEventListener('DOMContentLoaded', () => {
     ferryCamImg.src = proxyUrl;
   }
 
+  function positionCameraModal(terminal) {
+    if (!cameraModal) return;
+    const btn = terminal === 'hsb' ? btnHsbCam : btnBowenCam;
+    if (!btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    const isMobile = window.innerWidth <= 640;
+
+    cameraModal.classList.remove('cam-pos-bowen', 'cam-pos-hsb');
+    cameraModal.classList.add(terminal === 'hsb' ? 'cam-pos-hsb' : 'cam-pos-bowen');
+
+    if (isMobile) {
+      cameraModal.style.left = '8px';
+      cameraModal.style.right = '8px';
+      cameraModal.style.width = 'auto';
+      const bottomSpace = Math.max(68, window.innerHeight - rect.top + 8);
+      cameraModal.style.bottom = `${bottomSpace}px`;
+      cameraModal.style.top = 'auto';
+    } else {
+      const modalWidth = 420;
+      cameraModal.style.width = `${modalWidth}px`;
+      const bottomSpace = Math.max(70, window.innerHeight - rect.top + 10);
+      cameraModal.style.bottom = `${bottomSpace}px`;
+      cameraModal.style.top = 'auto';
+
+      if (terminal === 'bowen') {
+        let left = rect.left;
+        if (left + modalWidth > window.innerWidth - 16) {
+          left = window.innerWidth - modalWidth - 16;
+        }
+        if (left < 16) left = 16;
+        cameraModal.style.left = `${left}px`;
+        cameraModal.style.right = 'auto';
+      } else {
+        let right = window.innerWidth - rect.right;
+        if (right + modalWidth > window.innerWidth - 16) {
+          right = window.innerWidth - modalWidth - 16;
+        }
+        if (right < 16) right = 16;
+        cameraModal.style.right = `${right}px`;
+        cameraModal.style.left = 'auto';
+      }
+    }
+  }
+
   function openCameraModal(terminal) {
     if (!cameraModal) return;
+    closeTerminalModal();
     currentCamTerminal = terminal || 'bowen';
+    positionCameraModal(currentCamTerminal);
     cameraModal.classList.remove('hidden');
     updateCamButtonStates();
     loadFerryCamera();
@@ -434,6 +482,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCamRefresh) {
     btnCamRefresh.addEventListener('click', () => loadFerryCamera());
   }
+
+  window.addEventListener('resize', () => {
+    if (cameraModal && !cameraModal.classList.contains('hidden') && currentCamTerminal) {
+      positionCameraModal(currentCamTerminal);
+    }
+  });
 
   /**
    * Fetch live ferry data

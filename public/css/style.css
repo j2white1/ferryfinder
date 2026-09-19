@@ -539,10 +539,10 @@ html, body {
    ========================================================================== */
 .camera-modal {
   position: absolute;
-  top: 76px;
-  right: 16px;
+  bottom: 74px;
   width: 420px;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - 28px);
+  max-height: calc(100vh - 100px);
   background: rgba(15, 23, 42, 0.94);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -552,15 +552,49 @@ html, body {
   z-index: 40;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: top right;
+  overflow: visible;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom center;
+}
+
+.camera-modal.cam-pos-bowen {
+  transform-origin: bottom left;
+}
+
+.camera-modal.cam-pos-hsb {
+  transform-origin: bottom right;
 }
 
 .camera-modal.hidden {
   opacity: 0;
   pointer-events: none;
-  transform: scale(0.95) translateY(-8px);
+  transform: translateY(12px) scale(0.96);
+}
+
+/* Downward indicator notch pointing to the pressed button */
+.camera-modal::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  background: rgba(15, 23, 42, 0.95);
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  transform: rotate(45deg);
+  display: none;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.camera-modal.cam-pos-bowen::after {
+  display: block;
+  left: 15px;
+}
+
+.camera-modal.cam-pos-hsb::after {
+  display: block;
+  right: 15px;
 }
 
 .camera-modal-header {
@@ -569,6 +603,9 @@ html, body {
   align-items: center;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .cam-title-wrap {
@@ -683,11 +720,16 @@ html, body {
 }
 
 .camera-modal-footer {
+  position: relative;
+  z-index: 1;
   padding: 8px 12px;
   font-size: 10px;
   color: var(--text-dim);
   text-align: center;
   border-top: 1px solid var(--border-subtle);
+  border-bottom-left-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.94);
 }
 
 /* ==========================================================================
@@ -1268,10 +1310,20 @@ html, body {
   }
 
   .camera-modal {
-    top: calc(max(10px, env(safe-area-inset-top, 10px)) + 92px);
-    right: 10px;
-    left: 10px;
+    bottom: calc(max(14px, env(safe-area-inset-bottom, 14px)) + 54px);
+    top: auto;
+    right: 8px;
+    left: 8px;
     width: auto;
+    max-width: none;
+  }
+
+  .camera-modal.cam-pos-bowen::after {
+    left: 12px;
+  }
+
+  .camera-modal.cam-pos-hsb::after {
+    right: 12px;
   }
 
   .terminal-modal {
