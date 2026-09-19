@@ -66,19 +66,247 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Terminal Modal Elements & State
+  const terminalModal = document.getElementById('terminalModal');
+  const terminalModalTitle = document.getElementById('terminalModalTitle');
+  const terminalModalSub = document.getElementById('terminalModalSub');
+  const terminalModalBody = document.getElementById('terminalModalBody');
+  const btnTerminalModalClose = document.getElementById('btnTerminalModalClose');
+  const btnFilterRemaining = document.getElementById('btnFilterRemaining');
+  const btnFilterAll = document.getElementById('btnFilterAll');
+
+  let currentModalTerminal = null; // 'hsb' | 'bowen'
+  let currentModalFilter = 'remaining'; // 'remaining' | 'all'
+  let cachedLiveData = null;
+
+  function parseTimeToMinutes(timeStr) {
+    if (!timeStr) return null;
+    const parts = timeStr.trim().split(' ');
+    if (parts.length < 2) return null;
+    const [hm, meridiem] = parts;
+    let [h, m] = hm.split(':').map(Number);
+    if (meridiem.toUpperCase() === 'PM' && h < 12) h += 12;
+    if (meridiem.toUpperCase() === 'AM' && h === 12) h = 0;
+    return h * 60 + (m || 0);
+  }
+
+  function formatMinutesDiff(diffMinutes) {
+    if (diffMinutes < 0) return 'Departed';
+    if (diffMinutes === 0) return 'Boarding / Departing';
+    if (diffMinutes < 60) return `in ${diffMinutes}m`;
+    const h = Math.floor(diffMinutes / 60);
+    const m = diffMinutes % 60;
+    return m === 0 ? `in ${h}h` : `in ${h}h ${m}m`;
+  }
+
+  function renderTerminalModal(terminal) {
+    if (!terminalModal || !cachedLiveData) return;
+    const isHSB = terminal === 'hsb';
+    const title = isHSB ? 'Horseshoe Bay Departures' : 'Snug Cove (Bowen) Departures';
+    const times = isHSB
+      ? (cachedLiveData.schedules?.hsb?.times?.[0] || [])
+      : (cachedLiveData.schedules?.bowen?.times?.[0] || []);
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Map raw schedule entries
+    const sailings = times.map(item => {
+      const timeStr = item[0].trim();
+      const sailingMinutes = parseTimeToMinutes(timeStr);
+      const diffMinutes = sailingMinutes !== null ? (sailingMinutes - currentMinutes) : null;
+      const isUpcoming = diffMinutes !== null && diffMinutes >= 0;
+
+      // Check deck space for HSB
+      let deck = item[3] ? item[3].trim() : null;
+      if (isHSB && !deck) {
+        const deckTimes = cachedLiveData.deckSpace?.times?.[0] || [];
+        const match = deckTimes.find(d => d[0] === timeStr);
+        if (match && match[1]) {
+          deck = match[1];
+        }
+      }
+
+      return {
+        time: timeStr,
+        minutes: sailingMinutes,
+        diffMinutes,
+        isUpcoming,
+        isDangerousCargo: item[1] === '1',
+        isRepositioning: item[2] === '1',
+        deckSpace: deck
+      };
+    });
+
+    const upcomingSailings = sailings.filter(s => s.isUpcoming);
+    const displayedSailings = currentModalFilter === 'remaining' ? upcomingSailings : sailings;
+
+    // Update Header
+    terminalModalTitle.textContent = title;
+    if (upcomingSailings.length > 0) {
+      terminalModalSub.textContent = `${upcomingSailings.length} sailing${upcomingSailings.length === 1 ? '' : 's'} remaining today`;
+    } else {
+      terminalModalSub.textContent = 'All departures finished for today';
+    }
+
+    // Update filter tabs active state
+    if (btnFilterRemaining) btnFilterRemaining.classList.toggle('active', currentModalFilter === 'remaining');
+    if (btnFilterAll) btnFilterAll.classList.toggle('active', currentModalFilter === 'all');
+
+    // Build content
+    let html = '';
+
+    // Next Sailing Feature Card
+    if (upcomingSailings.length > 0) {
+      const next = upcomingSailings[0];
+      const countdown = formatMinutesDiff(next.diffMinutes);
+      const deckHtml = next.deckSpace ? `<span class="deck-badge-pill">${next.deckSpace} space left</span>` : '';
+      const specialTags = [];
+      if (next.isDangerousCargo) specialTags.push('<span class="sailing-tag tag-warning">⚠️ Dangerous Cargo</span>');
+      if (next.isRepositioning) specialTags.push('<span class="sailing-tag tag-repo">🔄 Repositioning</span>');
+
+      html += `
+        <div class="next-sailing-banner">
+          <div>
+            <span class="next-sailing-label">Next Departure</span>
+            <div class="next-sailing-time">${next.time}</div>
+            ${specialTags.length ? `<div style="margin-top: 6px; display: flex; gap: 4px;">${specialTags.join('')}</div>` : ''}
+          </div>
+          <div class="next-sailing-meta">
+            <span class="countdown-badge">${countdown}</span>
+            ${deckHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    // List of sailings
+    if (displayedSailings.length === 0) {
+      const firstTomorrow = times[0] ? times[0][0] : 'Early Morning';
+      html += `
+        <div class="no-sailings-notice">
+          <span class="no-sailings-icon">🌙</span>
+          <p><strong>All sailings have finished for today.</strong></p>
+          <p style="margin-top: 6px; font-size: 12px; color: var(--text-dim);">The next scheduled sailing departs tomorrow at <strong>${firstTomorrow}</strong>.</p>
+          <button class="modal-tab-btn" id="btnNoticeViewAll" style="margin-top: 12px;">View Full Daily Timetable</button>
+        </div>
+      `;
+    } else {
+      html += `<div class="sailing-list-wrap">`;
+      displayedSailings.forEach((sailing) => {
+        const isNext = upcomingSailings.length > 0 && sailing === upcomingSailings[0];
+        const isPast = sailing.diffMinutes !== null && sailing.diffMinutes < 0;
+        const diffText = isPast ? 'Departed' : formatMinutesDiff(sailing.diffMinutes);
+
+        const tags = [];
+        if (sailing.isDangerousCargo) tags.push('<span class="sailing-tag tag-warning" title="Dangerous Cargo sailing - Passenger access restricted">⚠️ Dangerous Cargo</span>');
+        if (sailing.isRepositioning) tags.push('<span class="sailing-tag tag-repo" title="Repositioning sailing">🔄 Repositioning</span>');
+
+        const deckBadge = sailing.deckSpace ? `<span class="deck-badge-pill">${sailing.deckSpace}</span>` : '';
+
+        html += `
+          <div class="sailing-item ${isPast ? 'past' : ''} ${isNext ? 'next-highlight' : ''}">
+            <div class="sailing-time-wrap">
+              <span class="sailing-time">${sailing.time}</span>
+              ${tags.length ? `<div class="sailing-tags">${tags.join('')}</div>` : ''}
+            </div>
+            <div class="sailing-deck-col">
+              ${deckBadge}
+              <span class="sailing-diff">${diffText}</span>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    terminalModalBody.innerHTML = html;
+
+    // Hook up button in empty state notice
+    const btnNoticeViewAll = document.getElementById('btnNoticeViewAll');
+    if (btnNoticeViewAll) {
+      btnNoticeViewAll.addEventListener('click', () => {
+        currentModalFilter = 'all';
+        renderTerminalModal(terminal);
+      });
+    }
+  }
+
+  function openTerminalModal(terminal) {
+    if (!terminalModal) return;
+    currentModalTerminal = terminal;
+    terminalModal.classList.remove('hidden');
+
+    if (bowenTerminalPill) bowenTerminalPill.classList.toggle('active', terminal === 'bowen');
+    if (hsbTerminalPill) hsbTerminalPill.classList.toggle('active', terminal === 'hsb');
+
+    renderTerminalModal(terminal);
+  }
+
+  function closeTerminalModal() {
+    if (!terminalModal) return;
+    terminalModal.classList.add('hidden');
+    currentModalTerminal = null;
+
+    if (bowenTerminalPill) bowenTerminalPill.classList.remove('active');
+    if (hsbTerminalPill) hsbTerminalPill.classList.remove('active');
+  }
+
+  function toggleTerminalModal(terminal) {
+    if (currentModalTerminal === terminal && !terminalModal.classList.contains('hidden')) {
+      closeTerminalModal();
+    } else {
+      openTerminalModal(terminal);
+    }
+  }
+
   if (bowenTerminalPill) {
-    bowenTerminalPill.addEventListener('click', () => {
-      MapManager.map.flyTo({ center: [-123.3330, 49.3835], zoom: 14, speed: 1.2 });
-      MapManager.setFollowFerry(false);
+    bowenTerminalPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleTerminalModal('bowen');
     });
   }
 
   if (hsbTerminalPill) {
-    hsbTerminalPill.addEventListener('click', () => {
-      MapManager.map.flyTo({ center: [-123.2725, 49.3755], zoom: 14, speed: 1.2 });
-      MapManager.setFollowFerry(false);
+    hsbTerminalPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleTerminalModal('hsb');
     });
   }
+
+  if (btnTerminalModalClose) {
+    btnTerminalModalClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeTerminalModal();
+    });
+  }
+
+  if (btnFilterRemaining) {
+    btnFilterRemaining.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentModalFilter = 'remaining';
+      if (currentModalTerminal) renderTerminalModal(currentModalTerminal);
+    });
+  }
+
+  if (btnFilterAll) {
+    btnFilterAll.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentModalFilter = 'all';
+      if (currentModalTerminal) renderTerminalModal(currentModalTerminal);
+    });
+  }
+
+  // Close modal when clicking outside
+  document.addEventListener('click', (e) => {
+    if (terminalModal && !terminalModal.classList.contains('hidden')) {
+      if (!terminalModal.contains(e.target) &&
+          (!bowenTerminalPill || !bowenTerminalPill.contains(e.target)) &&
+          (!hsbTerminalPill || !hsbTerminalPill.contains(e.target))) {
+        closeTerminalModal();
+      }
+    }
+  });
 
   // Camera Modal Handling
   let camRefreshInterval = null;
@@ -174,6 +402,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update Drawer
       updateDrawerContent(data);
 
+      // Cache for modal usage & refresh if open
+      cachedLiveData = data;
+      if (currentModalTerminal && terminalModal && !terminalModal.classList.contains('hidden')) {
+        renderTerminalModal(currentModalTerminal);
+      }
+
       liveIndicator.className = 'pulse-indicator';
       if (!data.telemetry.isFresh) {
         liveIndicator.classList.add('stale');
@@ -247,9 +481,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (pct) {
       const cleanPct = pct.includes('%') ? pct : `${pct}%`;
-      hsbDeckSpace.textContent = `${cleanPct} space left${sailingTime ? ' (' + sailingTime + ')' : ''}`;
+      hsbDeckSpace.textContent = `${cleanPct} space${sailingTime ? ' (' + sailingTime + ')' : ''}`;
     } else {
-      hsbDeckSpace.textContent = 'Deck Space: Check schedule';
+      hsbDeckSpace.textContent = 'Deck: Check schedule';
     }
   }
 

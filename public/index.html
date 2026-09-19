@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Queen of Capilano - Bowen Island Ferry Live Tracker</title>
   <meta name="description" content="Live 3D isometric tracking for the Queen of Capilano ferry between Bowen Island (Snug Cove) and Horseshoe Bay.">
   
@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="css/style.css?v=20260914i">
+  <link rel="stylesheet" href="css/style.css?v=20260918b">
 </head>
 <body>
   <!-- Fullscreen Map Canvas -->
@@ -73,14 +73,14 @@
           <path d="M23 7l-7 5 7 5V7z"/>
           <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
         </svg>
-        <span class="btn-label">Ferry Cam</span>
+        <span class="btn-label"><span class="hide-mobile">Ferry </span>Cam</span>
       </button>
     </div>
   </header>
 
   <!-- Bottom Terminal Quick-Bar -->
   <div class="hud-bottom-bar">
-    <div class="terminal-pill" id="bowenTerminalPill">
+    <div class="terminal-pill" id="bowenTerminalPill" title="Click to view remaining sailings from Snug Cove">
       <span class="pill-dot"></span>
       <div class="pill-text">
         <span class="pill-title">Snug Cove (Bowen)</span>
@@ -88,7 +88,7 @@
       </div>
     </div>
 
-    <div class="terminal-pill" id="hsbTerminalPill">
+    <div class="terminal-pill" id="hsbTerminalPill" title="Click to view remaining sailings from Horseshoe Bay">
       <span class="pill-dot"></span>
       <div class="pill-text">
         <span class="pill-title">Horseshoe Bay</span>
@@ -123,6 +123,30 @@
     </div>
     <div class="camera-modal-footer">
       <span>Near-real-time view of Snug Cove lineup courtesy of Bowen Island Municipality</span>
+    </div>
+  </div>
+
+  <!-- Terminal Sailings Popup Window -->
+  <div class="terminal-modal hidden" id="terminalModal">
+    <div class="terminal-modal-header">
+      <div class="terminal-modal-title-wrap">
+        <span class="terminal-modal-dot" id="terminalModalDot"></span>
+        <div>
+          <h3 class="terminal-modal-title" id="terminalModalTitle">Horseshoe Bay Departures</h3>
+          <span class="terminal-modal-sub" id="terminalModalSub">Remaining sailings today</span>
+        </div>
+      </div>
+      <div class="terminal-modal-actions">
+        <button class="modal-tab-btn active" id="btnFilterRemaining" title="Show remaining sailings today">Remaining</button>
+        <button class="modal-tab-btn" id="btnFilterAll" title="Show all scheduled sailings today">All Day</button>
+        <button class="cam-close-btn" id="btnTerminalModalClose" aria-label="Close Sailings Popup">&times;</button>
+      </div>
+    </div>
+    <div class="terminal-modal-body" id="terminalModalBody">
+      <!-- Injected dynamically: next sailing highlight card + list of remaining sailings -->
+    </div>
+    <div class="terminal-modal-footer">
+      <span id="terminalModalFooterNote">Queen of Capilano • Schedule subject to BC Ferries conditions</span>
     </div>
   </div>
 
@@ -169,9 +193,9 @@
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   
   <!-- App Scripts -->
-  <script src="js/telemetry.js?v=20260914i"></script>
-  <script src="js/vessel.js?v=20260914i"></script>
-  <script src="js/map.js?v=20260914i"></script>
-  <script src="js/app.js?v=20260914i"></script>
+  <script src="js/telemetry.js?v=20260918b"></script>
+  <script src="js/vessel.js?v=20260918b"></script>
+  <script src="js/map.js?v=20260918b"></script>
+  <script src="js/app.js?v=20260918b"></script>
 </body>
 </html>

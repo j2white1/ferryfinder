@@ -240,6 +240,12 @@ html, body {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.terminal-pill.active {
+  border-color: var(--accent-cyan);
+  background: rgba(14, 116, 144, 0.35);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+}
+
 .pill-dot {
   width: 8px;
   height: 8px;
@@ -651,6 +657,277 @@ html, body {
 }
 
 /* ==========================================================================
+   Terminal Sailings Popup Window
+   ========================================================================== */
+.terminal-modal {
+  position: absolute;
+  bottom: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 440px;
+  max-width: calc(100vw - 28px);
+  max-height: 68vh;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom center;
+}
+
+.terminal-modal.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(12px) scale(0.96);
+}
+
+.terminal-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+  gap: 12px;
+}
+
+.terminal-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.terminal-modal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  flex-shrink: 0;
+}
+
+.terminal-modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.terminal-modal-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+}
+
+.terminal-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.modal-tab-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.modal-tab-btn.active {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: #020617;
+  font-weight: 700;
+}
+
+.terminal-modal-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Next sailing highlight banner */
+.next-sailing-banner {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.22) 0%, rgba(15, 23, 42, 0.6) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.next-sailing-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.next-sailing-time {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.next-sailing-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.countdown-badge {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+}
+
+.deck-badge-pill {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+/* Sailing list items */
+.sailing-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sailing-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.sailing-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sailing-item.past {
+  opacity: 0.42;
+  background: transparent;
+}
+
+.sailing-item.next-highlight {
+  border-color: rgba(56, 189, 248, 0.25);
+  background: rgba(2, 132, 199, 0.1);
+}
+
+.sailing-time-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sailing-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.sailing-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sailing-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.tag-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.tag-repo {
+  background: rgba(147, 51, 234, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(147, 51, 234, 0.3);
+}
+
+.sailing-diff {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sailing-deck-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-modal-footer {
+  padding: 8px 14px;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: center;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.no-sailings-notice {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.no-sailings-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* ==========================================================================
    Schedule & Conditions Drawer / Modal
    ========================================================================== */
 .schedule-drawer {
@@ -808,16 +1085,24 @@ html, body {
 }
 
 /* ==========================================================================
-   Responsive Adaptations (Mobile & Small Screens)
+   Responsive Adaptations (Mobile & Small Screens - iPhone, Android)
    ========================================================================== */
+.hide-mobile {
+  display: inline;
+}
+
 @media (max-width: 640px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
   .hud-top {
-    top: 12px;
-    left: 12px;
-    right: 12px;
+    top: max(10px, env(safe-area-inset-top, 10px));
+    left: 10px;
+    right: 10px;
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
   }
 
   .hud-card.vessel-header {
@@ -827,39 +1112,108 @@ html, body {
     padding: 8px 12px;
   }
 
+  .vessel-name {
+    font-size: 13.5px;
+  }
+
+  .vessel-quick-stats {
+    font-size: 11px;
+    text-align: right;
+    max-width: 58%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Top 5 Action Buttons - flex equally across width without cut-off */
   .hud-controls {
-    justify-content: flex-end;
+    display: flex;
+    width: 100%;
+    gap: 5px;
+    justify-content: space-between;
   }
 
   .hud-btn {
-    padding: 6px 10px;
-    font-size: 12px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 7px 3px;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    border-radius: var(--radius-sm);
   }
 
+  .hud-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+  }
+
+  .hud-btn .btn-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  /* Bottom Bar - 2 pills divide screen equally without cut-off */
   .hud-bottom-bar {
-    bottom: 16px;
+    position: absolute;
+    bottom: max(14px, env(safe-area-inset-bottom, 14px));
+    left: 10px;
+    right: 10px;
+    transform: none;
+    max-width: none;
+    width: auto;
+    display: flex;
     gap: 8px;
+    pointer-events: none;
   }
 
   .terminal-pill {
-    padding: 6px 12px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 7px 10px;
+    gap: 8px;
+    border-radius: var(--radius-md);
+    box-sizing: border-box;
+  }
+
+  .pill-dot {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+  }
+
+  .pill-text {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
   }
 
   .pill-title {
-    font-size: 11px;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .pill-sub {
     font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-muted);
   }
 
   .ferry-floating-box {
-    width: 220px;
+    width: 210px;
     padding: 10px 12px;
   }
 
   .floating-box-metric {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .schedule-columns {
@@ -867,9 +1221,42 @@ html, body {
   }
 
   .camera-modal {
-    top: 105px;
-    right: 12px;
-    left: 12px;
+    top: calc(max(10px, env(safe-area-inset-top, 10px)) + 92px);
+    right: 10px;
+    left: 10px;
     width: auto;
+  }
+
+  .terminal-modal {
+    bottom: calc(max(14px, env(safe-area-inset-bottom, 14px)) + 58px);
+    left: 10px;
+    right: 10px;
+    width: auto;
+    transform: none;
+    max-height: 70vh;
+  }
+
+  .terminal-modal.hidden {
+    transform: translateY(12px) scale(0.96);
+  }
+}
+
+/* Extra small screens (< 360px) */
+@media (max-width: 360px) {
+  .hud-btn {
+    padding: 6px 2px;
+    gap: 2px;
+  }
+
+  .hud-btn .btn-label {
+    font-size: 10px;
+  }
+
+  .pill-title {
+    font-size: 10.5px;
+  }
+
+  .pill-sub {
+    font-size: 9.5px;
   }
 }
