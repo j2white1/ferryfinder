@@ -1239,6 +1239,12 @@ html, body {
   .terminal-modal.hidden {
     transform: translateY(12px) scale(0.96);
   }
+
+  /* Lift map zoom controls above the bottom terminal pills */
+  .maplibregl-ctrl-bottom-left {
+    bottom: calc(max(14px, env(safe-area-inset-bottom, 14px)) + 52px) !important;
+    left: 10px !important;
+  }
 }
 
 /* Extra small screens (< 360px) */
