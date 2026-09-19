@@ -147,7 +147,7 @@ function generateSimulatedData() {
           name: 'QUEEN OF CAPILANO',
           SOG: sog.toFixed(1),
           heading: heading.toString(),
-          LatestUpdate: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' }),
+          LatestUpdate: new Date().toLocaleTimeString('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', minute: '2-digit', second: '2-digit' }),
           Fresh: 'True',
           pointtype: 'Vessel'
         },
@@ -158,25 +158,70 @@ function generateSimulatedData() {
       }
     ],
     atberth: {
-      date: new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      date: new Date().toLocaleDateString('en-US', { timeZone: 'America/Vancouver', weekday: 'short', month: 'short', day: 'numeric' }),
       times: [[
-        state === 'docked' ? ['Arrived', currentDock, new Date(now - (cycleProgress - 0.8) * cycleTimeMs).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })]
-                           : ['Departed', start.shortName, new Date(now - cycleProgress * cycleTimeMs).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })]
+        state === 'docked' ? ['Arrived', currentDock, new Date(now - (cycleProgress - 0.8) * cycleTimeMs).toLocaleTimeString('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', minute: '2-digit', second: '2-digit' })]
+                           : ['Departed', start.shortName, new Date(now - cycleProgress * cycleTimeMs).toLocaleTimeString('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', minute: '2-digit', second: '2-digit' })]
       ]]
     },
     deckSpace: {
-      lastUpdated: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      lastUpdated: new Date().toLocaleTimeString('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', minute: '2-digit' }),
       Fresh: 'True',
       times: [[['Next Sailing', '85%', '0']]]
     },
     schbowen: {
-      date: new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      date: new Date().toLocaleDateString('en-US', { timeZone: 'America/Vancouver', weekday: 'short', month: 'short', day: 'numeric' }),
       times: [[['6:15 AM', '0'], ['7:30 AM', '0'], ['8:45 AM', '0'], ['10:00 AM', '0'], ['11:15 AM', '0'], ['12:35 PM', '0'], ['1:55 PM', '0'], ['3:15 PM', '0'], ['4:40 PM', '0'], ['6:00 PM', '0'], ['7:15 PM', '0'], ['8:25 PM', '0'], ['9:30 PM', '0'], ['10:30 PM', '0']]]
     },
     schHSB: {
       times: [[['5:45 AM', '0', '0', ''], ['6:50 AM', '0', '0', ''], ['8:05 AM', '0', '0', ''], ['9:20 AM', '0', '0', ''], ['10:35 AM', '0', '0', ''], ['11:55 AM', '0', '0', ''], ['1:10 PM', '0', '0', ''], ['2:35 PM', '0', '0', ''], ['3:55 PM', '0', '0', ''], ['5:20 PM', '0', '0', ''], ['6:35 PM', '0', '0', ''], ['7:50 PM', '0', '0', ''], ['8:55 PM', '0', '0', ''], ['10:00 PM', '0', '0', '85%']]]
     }
   };
+}
+
+/**
+ * Parse 12-hour or 24-hour time string into seconds from midnight
+ */
+function parseTimeStringToSeconds(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (!match) return null;
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const s = match[3] ? parseInt(match[3], 10) : 0;
+  const meridiem = match[4] ? match[4].toUpperCase() : null;
+
+  if (meridiem === 'PM' && h < 12) h += 12;
+  if (meridiem === 'AM' && h === 12) h = 0;
+
+  return h * 3600 + m * 60 + s;
+}
+
+/**
+ * Get current time of day in America/Vancouver timezone in seconds from midnight
+ */
+function getVancouverCurrentSeconds() {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Vancouver',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(new Date());
+    let h = 0, m = 0, s = 0;
+    for (const part of parts) {
+      if (part.type === 'hour') h = parseInt(part.value, 10);
+      if (part.type === 'minute') m = parseInt(part.value, 10);
+      if (part.type === 'second') s = parseInt(part.value, 10);
+    }
+    if (h === 24) h = 0;
+    return h * 3600 + m * 60 + s;
+  } catch {
+    const now = new Date();
+    return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  }
 }
 
 // Compute enriched telemetry
@@ -235,19 +280,42 @@ function enrichFerryData(raw) {
   }
 
   if (state === 'docked') {
-    // Calculate elapsed docked time from latest arrival log
-    if (latestLog && latestLog[0] === 'Arrived') {
-      try {
-        const timeStr = latestLog[2];
-        const logDate = new Date();
-        const [timePart, meridiem] = timeStr.split(' ');
-        let [h, m, s] = timePart.split(':').map(Number);
-        if (meridiem && meridiem.toLowerCase() === 'pm' && h < 12) h += 12;
-        if (meridiem && meridiem.toLowerCase() === 'am' && h === 12) h = 0;
-        logDate.setHours(h, m, s || 0, 0);
+    // Find arrival log matching current dock, or fallback to latest arrival
+    let arrivalLog = null;
+    for (const log of berthLogs) {
+      if (Array.isArray(log) && log[0] === 'Arrived') {
+        const loc = (log[1] || '').toLowerCase();
+        if (currentDock === TERMINALS.SNUG_COVE.shortName && (loc.includes('bowen') || loc.includes('snug'))) {
+          arrivalLog = log;
+          break;
+        }
+        if (currentDock === TERMINALS.HORSESHOE_BAY.shortName && (loc.includes('hsb') || loc.includes('horseshoe'))) {
+          arrivalLog = log;
+          break;
+        }
+      }
+    }
+    if (!arrivalLog && latestLog && latestLog[0] === 'Arrived') {
+      arrivalLog = latestLog;
+    }
 
-        const diffMs = Math.max(0, Date.now() - logDate.getTime());
-        elapsedDockedMinutes = Math.round(diffMs / (60 * 1000));
+    if (arrivalLog && arrivalLog[2]) {
+      try {
+        const arrivalSec = parseTimeStringToSeconds(arrivalLog[2]);
+        if (arrivalSec !== null) {
+          const nowSec = getVancouverCurrentSeconds();
+          let diffSec = nowSec - arrivalSec;
+          // Handle midnight crossover (e.g. arrived 11:55 PM, now 12:05 AM)
+          if (diffSec < -43200) {
+            diffSec += 86400;
+          } else if (diffSec < 0 && diffSec >= -180) {
+            // Upstream arrival log slightly ahead of server clock (up to 3 min skew)
+            diffSec = 0;
+          } else if (diffSec > 86400) {
+            diffSec = diffSec % 86400;
+          }
+          elapsedDockedMinutes = Math.max(0, Math.round(diffSec / 60));
+        }
       } catch {
         elapsedDockedMinutes = null;
       }

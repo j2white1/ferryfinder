@@ -17,6 +17,7 @@ const Telemetry = {
   formatElapsedDocked(minutes) {
     if (minutes === null || minutes === undefined) return 'Just docked';
     if (minutes <= 0) return '< 1 min';
+    if (minutes === 1) return '1 min';
     if (minutes < 60) return `${minutes} mins`;
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
