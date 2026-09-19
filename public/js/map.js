@@ -242,7 +242,7 @@ const MapManager = {
 
       // Create floating popup (always open above marker)
       this.vesselPopup = new maplibregl.Popup({
-        offset: [0, -56],
+        offset: [0, -30],
         closeButton: false,
         closeOnClick: false,
         className: 'ferry-popup-custom',
