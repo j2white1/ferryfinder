@@ -224,6 +224,117 @@ function getVancouverCurrentSeconds() {
   }
 }
 
+/**
+ * Detect service warnings: delayed sailings or cancellations
+ */
+function detectServiceWarning(raw, enriched) {
+  const bowenTimes = raw.schbowen?.times?.[0] || enriched.schedules?.bowen?.times?.[0] || [];
+  const hsbTimes = raw.schHSB?.times?.[0] || enriched.schedules?.hsb?.times?.[0] || [];
+  const berthLogs = enriched.berthLog || [];
+
+  const mainFeature = raw.features?.[0] || {};
+  const exceptions = [
+    ...(mainFeature.todayException?.times?.[0] || raw.todayException?.times?.[0] || []),
+    ...(mainFeature.todayFullDayException?.times?.[0] || raw.todayFullDayException?.times?.[0] || []),
+    ...(mainFeature.otherException?.times?.[0] || raw.otherException?.times?.[0] || [])
+  ];
+
+  // 1. Check for cancellations in exceptions
+  for (const exp of exceptions) {
+    const text = Array.isArray(exp) ? exp.join(' ') : String(exp || '');
+    if (/cancel|suspens|no sailing/i.test(text)) {
+      const isHSB = /hsb|horseshoe/i.test(text);
+      return {
+        hasWarning: true,
+        type: 'cancellation',
+        terminal: isHSB ? 'hsb' : 'bowen',
+        terminalName: isHSB ? 'Horseshoe Bay' : 'Snug Cove',
+        message: text.length > 45 ? `${text.slice(0, 42)}...` : text,
+        details: text
+      };
+    }
+  }
+
+  // Check schedules for any item marked cancelled
+  const checkScheduleForCancel = (times, termKey, termName) => {
+    for (const item of times) {
+      if (!Array.isArray(item)) continue;
+      const rowText = item.join(' ');
+      if (/cancel/i.test(rowText)) {
+        return {
+          hasWarning: true,
+          type: 'cancellation',
+          terminal: termKey,
+          terminalName: termName,
+          scheduledTime: item[0],
+          message: `${item[0]} ${termName} sailing cancelled`,
+          details: `The ${item[0]} scheduled departure from ${termName} has been cancelled.`
+        };
+      }
+    }
+    return null;
+  };
+
+  const bowenCancel = checkScheduleForCancel(bowenTimes, 'bowen', 'Snug Cove');
+  if (bowenCancel) return bowenCancel;
+  const hsbCancel = checkScheduleForCancel(hsbTimes, 'hsb', 'Horseshoe Bay');
+  if (hsbCancel) return hsbCancel;
+
+  // 2. Check for delayed departures
+  const nowSec = getVancouverCurrentSeconds();
+  const nowMin = Math.floor(nowSec / 60);
+
+  const checkTerminalDelay = (times, termKey, termName) => {
+    for (const item of times) {
+      if (!Array.isArray(item) || !item[0]) continue;
+      const timeStr = item[0].trim();
+      const schedSec = parseTimeStringToSeconds(timeStr);
+      if (schedSec === null) continue;
+      const schedMin = Math.floor(schedSec / 60);
+      let diffMin = nowMin - schedMin;
+      if (diffMin < -720) diffMin += 1440;
+
+      // Only check sailings whose scheduled departure was 3 to 75 minutes ago
+      if (diffMin >= 3 && diffMin <= 75) {
+        const locKeywords = termKey === 'bowen' ? ['bowen', 'snug'] : ['hsb', 'horseshoe'];
+        const alreadyDeparted = berthLogs.some(log => {
+          if (!Array.isArray(log) || log[0] !== 'Departed') return false;
+          const loc = (log[1] || '').toLowerCase();
+          if (!locKeywords.some(k => loc.includes(k))) return false;
+          const depSec = parseTimeStringToSeconds(log[2]);
+          if (depSec === null) return false;
+          const depMin = Math.floor(depSec / 60);
+          let depDiff = depMin - schedMin;
+          if (depDiff < -720) depDiff += 1440;
+          return depDiff >= -10 && depDiff <= (diffMin + 2);
+        });
+
+        if (!alreadyDeparted) {
+          return {
+            hasWarning: true,
+            type: 'delay',
+            terminal: termKey,
+            terminalName: termName,
+            scheduledTime: timeStr,
+            delayMinutes: diffMin,
+            message: `${timeStr} ${termName} delayed (+${diffMin}m)`,
+            details: `The ${timeStr} departure from ${termName} has not departed yet (+${diffMin} mins).`
+          };
+        }
+      }
+    }
+    return null;
+  };
+
+  const bowenDelay = checkTerminalDelay(bowenTimes, 'bowen', 'Snug Cove');
+  if (bowenDelay) return bowenDelay;
+
+  const hsbDelay = checkTerminalDelay(hsbTimes, 'hsb', 'Horseshoe Bay');
+  if (hsbDelay) return hsbDelay;
+
+  return null;
+}
+
 // Compute enriched telemetry
 function enrichFerryData(raw) {
   const mainFeature = raw.features?.[0] || {};
@@ -347,7 +458,7 @@ function enrichFerryData(raw) {
     etaMinutes = Math.max(1, Math.min(estimatedMinutes, 25));
   }
 
-  return {
+  const result = {
     telemetry: {
       name: props.name || 'QUEEN OF CAPILANO',
       coordinates: [lon, lat],
@@ -371,8 +482,17 @@ function enrichFerryData(raw) {
       bowen: schbowen,
       hsb: schHSB
     },
+    exceptions: {
+      today: mainFeature.todayException || raw.todayException || null,
+      todayFullDay: mainFeature.todayFullDayException || raw.todayFullDayException || null,
+      other: mainFeature.otherException || raw.otherException || null
+    },
     isSimulation: !!raw.isSimulation
   };
+
+  result.warning = detectServiceWarning(raw, result);
+
+  return result;
 }
 
 // MIME Types

@@ -78,6 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnFilterRemaining = document.getElementById('btnFilterRemaining');
   const btnFilterAll = document.getElementById('btnFilterAll');
 
+  // Service Warning Pop-up Pill Elements & State
+  const warningPill = document.getElementById('warningPill');
+  const warningPillIcon = document.getElementById('warningPillIcon');
+  const warningPillText = document.getElementById('warningPillText');
+  let activeWarning = null;
+  let simulatedWarning = null;
+
   let currentModalTerminal = null; // 'hsb' | 'bowen'
   let currentModalFilter = 'remaining'; // 'remaining' | 'all'
   let cachedLiveData = null;
@@ -142,7 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const upcomingSailings = sailings.filter(s => s.isUpcoming);
-    const displayedSailings = currentModalFilter === 'remaining' ? upcomingSailings : sailings;
+    // In remaining view, omit the first upcoming sailing because it is already featured in the Next Departure card above
+    const displayedSailings = currentModalFilter === 'remaining'
+      ? upcomingSailings.slice(1)
+      : sailings;
 
     // Update Header
     terminalModalTitle.textContent = title;
@@ -159,13 +169,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // Build content
     let html = '';
 
+    // Service Warning Alert Banner in Modal
+    if (activeWarning && (activeWarning.terminal === terminal || !activeWarning.terminal)) {
+      const isCancel = activeWarning.type === 'cancellation';
+      html += `
+        <div class="terminal-warning-banner ${isCancel ? 'cancellation' : ''}">
+          <span class="terminal-warning-icon">${isCancel ? '🚫' : '⚠️'}</span>
+          <div class="terminal-warning-text">
+            <strong>${isCancel ? 'Service Alert — Sailing Cancelled' : 'Service Alert — Departure Delayed'}</strong>
+            <span>${activeWarning.details || activeWarning.message}</span>
+          </div>
+        </div>
+      `;
+    }
+
     // Next Sailing Feature Card
     if (upcomingSailings.length > 0) {
       const next = upcomingSailings[0];
       const countdown = formatMinutesDiff(next.diffMinutes);
       const deckHtml = next.deckSpace ? `<span class="deck-badge-pill">${next.deckSpace} space left</span>` : '';
       const specialTags = [];
-      if (next.isDangerousCargo) specialTags.push('<span class="sailing-tag tag-warning">⚠️ Dangerous Cargo</span>');
+      if (next.isDangerousCargo) specialTags.push('<span class="sailing-tag tag-warning">⚠️ Dangerous Goods — No Passengers Allowed</span>');
       if (next.isRepositioning) specialTags.push('<span class="sailing-tag tag-repo">🔄 Repositioning</span>');
 
       html += `
@@ -173,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div>
             <span class="next-sailing-label">Next Departure</span>
             <div class="next-sailing-time">${next.time}</div>
-            ${specialTags.length ? `<div style="margin-top: 6px; display: flex; gap: 4px;">${specialTags.join('')}</div>` : ''}
+            ${specialTags.length ? `<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px;">${specialTags.join('')}</div>` : ''}
           </div>
           <div class="next-sailing-meta">
             <span class="countdown-badge">${countdown}</span>
@@ -186,23 +210,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // List of sailings
     if (displayedSailings.length === 0) {
       const firstTomorrow = times[0] ? times[0][0] : 'Early Morning';
-      html += `
-        <div class="no-sailings-notice">
-          <span class="no-sailings-icon">🌙</span>
-          <p><strong>All sailings have finished for today.</strong></p>
-          <p style="margin-top: 6px; font-size: 12px; color: var(--text-dim);">The next scheduled sailing departs tomorrow at <strong>${firstTomorrow}</strong>.</p>
-          <button class="modal-tab-btn" id="btnNoticeViewAll" style="margin-top: 12px;">View Full Daily Timetable</button>
-        </div>
-      `;
+      if (currentModalFilter === 'remaining' && upcomingSailings.length > 0) {
+        html += `
+          <div class="no-sailings-notice" style="padding: 16px 12px; margin-top: 6px;">
+            <p><strong>Final scheduled departure for today.</strong></p>
+            <p style="margin-top: 6px; font-size: 12px; color: var(--text-dim);">Tomorrow's first sailing departs at <strong>${firstTomorrow}</strong>.</p>
+            <button class="modal-tab-btn" id="btnNoticeViewAll" style="margin-top: 12px;">View Full Daily Timetable</button>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="no-sailings-notice">
+            <span class="no-sailings-icon">🌙</span>
+            <p><strong>All sailings have finished for today.</strong></p>
+            <p style="margin-top: 6px; font-size: 12px; color: var(--text-dim);">The next scheduled sailing departs tomorrow at <strong>${firstTomorrow}</strong>.</p>
+            <button class="modal-tab-btn" id="btnNoticeViewAll" style="margin-top: 12px;">View Full Daily Timetable</button>
+          </div>
+        `;
+      }
     } else {
-      html += `<div class="sailing-list-wrap">`;
+      const sectionLabel = currentModalFilter === 'remaining' ? 'Later Departures' : 'Full Timetable';
+      html += `
+        <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); margin: 4px 0 -2px 2px;">${sectionLabel}</div>
+        <div class="sailing-list-wrap">
+      `;
       displayedSailings.forEach((sailing) => {
         const isNext = upcomingSailings.length > 0 && sailing === upcomingSailings[0];
         const isPast = sailing.diffMinutes !== null && sailing.diffMinutes < 0;
         const diffText = isPast ? 'Departed' : formatMinutesDiff(sailing.diffMinutes);
 
         const tags = [];
-        if (sailing.isDangerousCargo) tags.push('<span class="sailing-tag tag-warning" title="Dangerous Cargo sailing - Passenger access restricted">⚠️ Dangerous Cargo</span>');
+        if (sailing.isDangerousCargo) tags.push('<span class="sailing-tag tag-warning" title="Dangerous Goods sailing — No passengers allowed">⚠️ Dangerous Goods — No Passengers Allowed</span>');
         if (sailing.isRepositioning) tags.push('<span class="sailing-tag tag-repo" title="Repositioning sailing">🔄 Repositioning</span>');
 
         const deckBadge = sailing.deckSpace ? `<span class="deck-badge-pill">${sailing.deckSpace}</span>` : '';
@@ -238,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openTerminalModal(terminal) {
     if (!terminalModal) return;
     closeCameraModal();
+    if (warningPill) warningPill.classList.add('hidden');
     currentModalTerminal = terminal;
     terminalModal.classList.remove('hidden');
 
@@ -254,6 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (bowenTerminalPill) bowenTerminalPill.classList.remove('active');
     if (hsbTerminalPill) hsbTerminalPill.classList.remove('active');
+
+    updateWarningPill(cachedLiveData);
   }
 
   function toggleTerminalModal(terminal) {
@@ -318,6 +359,132 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  // Service Warning Pop-up Pill Logic
+  function updateWarningPill(data) {
+    if (!warningPill) return;
+
+    // 1. Check for simulated warning override or server warning
+    let warning = simulatedWarning || data?.warning || null;
+
+    // 2. Client-side fallback check (e.g. if time has advanced between polling intervals)
+    if (!warning && data) {
+      const bowenTimes = data.schedules?.bowen?.times?.[0] || [];
+      const hsbTimes = data.schedules?.hsb?.times?.[0] || [];
+      const berthLogs = data.berthLog || [];
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+
+      const checkDelay = (times, termKey, termName) => {
+        for (const item of times) {
+          if (!Array.isArray(item) || !item[0]) continue;
+          const timeStr = item[0].trim();
+          const schedMin = parseTimeToMinutes(timeStr);
+          if (schedMin === null) continue;
+          let diffMin = nowMin - schedMin;
+          if (diffMin < -720) diffMin += 1440;
+
+          if (diffMin >= 3 && diffMin <= 75) {
+            const locKeywords = termKey === 'bowen' ? ['bowen', 'snug'] : ['hsb', 'horseshoe'];
+            const alreadyDeparted = berthLogs.some(log => {
+              if (!Array.isArray(log) || log[0] !== 'Departed') return false;
+              const loc = (log[1] || '').toLowerCase();
+              if (!locKeywords.some(k => loc.includes(k))) return false;
+              const depMin = parseTimeToMinutes(log[2]);
+              if (depMin === null) return false;
+              let depDiff = depMin - schedMin;
+              if (depDiff < -720) depDiff += 1440;
+              return depDiff >= -10 && depDiff <= (diffMin + 2);
+            });
+
+            if (!alreadyDeparted) {
+              return {
+                hasWarning: true,
+                type: 'delay',
+                terminal: termKey,
+                terminalName: termName,
+                scheduledTime: timeStr,
+                delayMinutes: diffMin,
+                message: `${timeStr} ${termName} delayed (+${diffMin}m)`,
+                details: `The ${timeStr} departure from ${termName} has not departed yet (+${diffMin} mins).`
+              };
+            }
+          }
+        }
+        return null;
+      };
+
+      warning = checkDelay(bowenTimes, 'bowen', 'Snug Cove') || checkDelay(hsbTimes, 'hsb', 'Horseshoe Bay');
+    }
+
+    activeWarning = warning;
+
+    // Do not show floating pill if a modal window is currently open
+    const isModalOpen = (terminalModal && !terminalModal.classList.contains('hidden')) ||
+                        (cameraModal && !cameraModal.classList.contains('hidden'));
+
+    if (warning && !isModalOpen) {
+      const isCancel = warning.type === 'cancellation';
+      if (warningPillIcon) warningPillIcon.textContent = isCancel ? '🚫' : '⚠️';
+      if (warningPillText) warningPillText.textContent = warning.message;
+      warningPill.classList.toggle('cancellation', isCancel);
+      warningPill.classList.remove('hidden');
+    } else {
+      warningPill.classList.add('hidden');
+    }
+  }
+
+  if (warningPill) {
+    const handleWarningClick = (e) => {
+      e.stopPropagation();
+      if (activeWarning && activeWarning.terminal) {
+        openTerminalModal(activeWarning.terminal);
+      } else {
+        openTerminalModal('bowen');
+      }
+    };
+    warningPill.addEventListener('click', handleWarningClick);
+    warningPill.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleWarningClick(e);
+      }
+    });
+  }
+
+  // Developer simulation helper for testing warning pill
+  window.simulateWarning = (type = 'delay', time = '5:20 PM', terminal = 'hsb', delayMinutes = 6) => {
+    if (!type) {
+      simulatedWarning = null;
+      console.log('Simulated warning cleared.');
+    } else if (type === 'cancellation') {
+      const termName = terminal === 'hsb' ? 'Horseshoe Bay' : 'Snug Cove';
+      simulatedWarning = {
+        hasWarning: true,
+        type: 'cancellation',
+        terminal,
+        terminalName,
+        scheduledTime: time,
+        message: `${time} ${termName} sailing cancelled`,
+        details: `The ${time} scheduled departure from ${termName} has been cancelled.`
+      };
+      console.log('Simulated cancellation activated:', simulatedWarning);
+    } else {
+      const termName = terminal === 'hsb' ? 'Horseshoe Bay' : 'Snug Cove';
+      simulatedWarning = {
+        hasWarning: true,
+        type: 'delay',
+        terminal,
+        terminalName,
+        scheduledTime: time,
+        delayMinutes,
+        message: `${time} ${termName} delayed (+${delayMinutes}m)`,
+        details: `The ${time} departure from ${termName} has not departed yet (+${delayMinutes} mins).`
+      };
+      console.log('Simulated delay activated:', simulatedWarning);
+    }
+    updateWarningPill(cachedLiveData);
+  };
 
   // Camera Modal Handling
   const CAM_CONFIG = {
@@ -432,6 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openCameraModal(terminal) {
     if (!cameraModal) return;
     closeTerminalModal();
+    if (warningPill) warningPill.classList.add('hidden');
     currentCamTerminal = terminal || 'bowen';
     positionCameraModal(currentCamTerminal);
     cameraModal.classList.remove('hidden');
@@ -450,6 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearInterval(camRefreshInterval);
       camRefreshInterval = null;
     }
+    updateWarningPill(cachedLiveData);
   }
 
   function toggleCameraModal(terminal) {
@@ -515,6 +684,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currentModalTerminal && terminalModal && !terminalModal.classList.contains('hidden')) {
         renderTerminalModal(currentModalTerminal);
       }
+
+      // Update Service Warning Pop-up Pill
+      updateWarningPill(data);
 
       liveIndicator.className = 'pulse-indicator';
       if (!data.telemetry.isFresh) {
@@ -618,7 +790,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isDangerousCargo = item[1] === '1';
       return `
         <div class="schedule-row">
-          <span>${item[0]} ${isDangerousCargo ? '⚠️ (Dangerous Cargo)' : ''}</span>
+          <span>${item[0]} ${isDangerousCargo ? '⚠️ (Dangerous Goods — No Passengers Allowed)' : ''}</span>
         </div>
       `;
     }).join('');
@@ -631,7 +803,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const deck = item[3] ? `(${item[3]} deck)` : '';
       return `
         <div class="schedule-row">
-          <span>${item[0]} ${isDangerousCargo ? '⚠️' : ''} ${isRepositioning ? '🔄' : ''}</span>
+          <span>${item[0]} ${isDangerousCargo ? '⚠️ (Dangerous Goods — No Passengers Allowed)' : ''} ${isRepositioning ? '🔄' : ''}</span>
           <span>${deck}</span>
         </div>
       `;
