@@ -200,7 +200,7 @@ const MapManager = {
    */
   setupTerminalMarkers() {
     const terminals = [
-      { name: 'Snug Cove (Bowen)', coords: [-123.3330, 49.3835], label: 'Bowen Island' },
+      { name: 'Snug Cove (Bowen)', coords: [-123.3314, 49.3795], label: 'Bowen Island' },
       { name: 'Horseshoe Bay', coords: [-123.2725, 49.3755], label: 'West Vancouver' }
     ];
 

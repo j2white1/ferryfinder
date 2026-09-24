@@ -15,8 +15,8 @@ const TERMINALS = {
   SNUG_COVE: {
     name: 'Snug Cove (Bowen Island)',
     shortName: 'Snug Cove',
-    lon: -123.3330,
-    lat: 49.3835,
+    lon: -123.3314,
+    lat: 49.3795,
     dockRadiusKm: 0.25
   },
   HORSESHOE_BAY: {
